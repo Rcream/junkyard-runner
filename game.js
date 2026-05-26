@@ -759,9 +759,10 @@ class LevelGen {
 
     for (const p of held) {
       const crum = rand(0, 1) < 0.15 + d * 0.04;
+      const mag = !crum && this.chunks > 2 && rand(0, 1) < 0.08 + d * 0.03;
       const fp = {
         x: p.x, y: p.y, w: p.w, h: CFG.PLAT_H,
-        type: crum ? 'crumbling' : 'static',
+        type: crum ? 'crumbling' : (mag ? 'magnet' : 'static'),
         broken: false, active: true,
         state: 'solid', timer: 0, shakeOff: 0, respawnT: 0
       };
@@ -792,12 +793,7 @@ class LevelGen {
       });
     }
 
-    if (this.chunks > 5 && rand(0, 1) < 0.1 + d * 0.03) {
-      g.magnets.push({
-        x: startX + rand(50, CFG.CHUNK_W - 120), y: 310 + rand(0, 80), w: 100, h: 80,
-        active: true
-      });
-    }
+
   }
 
   reset() {
@@ -939,7 +935,6 @@ class Game {
     this.platforms = [];
     this.hazards = [];
     this.scraps = [];
-    this.magnets = [];
     this.conveyors = [];
     this.floatTexts = [];
 
@@ -969,7 +964,7 @@ class Game {
 
   start() {
     this.platforms = []; this.hazards = []; this.scraps = [];
-    this.magnets = []; this.conveyors = []; this.floatTexts = [];
+    this.conveyors = []; this.floatTexts = [];
     this.score = 0; this.totalScrap = 0; this.dist = 0;
     this.lives = 3; this.difficulty = 1; this.gameTime = 0; this.diffTimer = 0;
 
@@ -1047,6 +1042,16 @@ class Game {
       h.y = clamp(h.minY + (Math.sin(t) + 1) * 0.5 * (h.maxY - h.minY), h.minY, h.maxY);
     }
 
+    const nearMagnets = [];
+    for (const p of this.platforms) {
+      if (p.type !== 'magnet' || p.broken || !p.active) continue;
+      const pmx = p.x + p.w / 2;
+      const pmy = p.y + p.h / 2;
+      const pdx = this.player.x + this.player.w / 2 - pmx;
+      const pdy = this.player.y + this.player.h / 2 - pmy;
+      if (pdx * pdx + pdy * pdy < 62500) nearMagnets.push(p);
+    }
+
     for (const s of this.scraps) {
       if (s.col) continue;
       s.drawY = s.y + Math.sin(this.gameTime * 0.05 + s.bob) * 2;
@@ -1058,17 +1063,15 @@ class Game {
         this.floatTexts.push({ x: s.x, y: s.drawY - 5, text: '+10', alpha: 1, vy: -1.5 });
       }
 
-      for (const m of this.magnets) {
-        if (!m.active) continue;
-        const mx = m.x + m.w / 2;
-        const my = m.y + m.h / 2;
-        const dx = mx - (s.x + s.w / 2);
-        const dy = my - (s.drawY || s.y) - s.h / 2;
+      for (const m of nearMagnets) {
+        const px = this.player.x + this.player.w / 2;
+        const py = this.player.y + this.player.h / 2;
+        const dx = px - (s.x + s.w / 2);
+        const dy = py - (s.drawY || s.y) - s.h / 2;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 160 && dist > 4) {
-          const force = 1.8;
-          s.x += (dx / dist) * force;
-          s.y += (dy / dist) * force;
+        if (dist < 200 && dist > 2) {
+          s.x += (dx / dist) * 2.5;
+          s.y += (dy / dist) * 2.5;
         }
       }
     }
@@ -1116,7 +1119,6 @@ class Game {
     this.hazards = this.hazards.filter(h => h.x + h.w > pruneX);
     this.scraps = this.scraps.filter(s => s.x > pruneX && !s.col);
     this.conveyors = this.conveyors.filter(c => c.x + c.w > pruneX);
-    this.magnets = this.magnets.filter(m => m.x + m.w > pruneX);
   }
 
   tickCrumble(p) {
@@ -1200,32 +1202,79 @@ class Game {
       const ox = p.shakeOff || 0;
       if (ox) ctx.translate(ox, 0);
 
-      ctx.fillStyle = p.broken ? '#444' : (p.type === 'crumbling' ? '#B55A1A' : '#B7410E');
+      if (p.type === 'magnet' && !p.broken) {
+        ctx.fillStyle = '#2A6B8A';
+      } else {
+        ctx.fillStyle = p.broken ? '#444' : (p.type === 'crumbling' ? '#B55A1A' : '#B7410E');
+      }
       ctx.fillRect(p.x, p.y, p.w, p.h);
 
       if (!p.broken) {
-        ctx.fillStyle = '#D06A2A';
-        ctx.fillRect(p.x, p.y, p.w, 3);
-        ctx.fillStyle = '#7B2A0A';
-        ctx.fillRect(p.x, p.y + p.h - 3, p.w, 3);
+        if (p.type === 'magnet') {
+          ctx.fillStyle = '#4A9BC8';
+          ctx.fillRect(p.x, p.y, p.w, 3);
+          ctx.fillStyle = '#1A4B6A';
+          ctx.fillRect(p.x, p.y + p.h - 3, p.w, 3);
 
-        for (let b = 0; b < Math.ceil(p.w / 35); b++) {
-          ctx.fillStyle = '#6B2A0A';
-          ctx.beginPath();
-          ctx.arc(p.x + 8 + b * 35, p.y + 8, 2.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        if (p.state === 'activated') {
-          const a = 0.15 + Math.sin(Date.now() * 0.01) * 0.08;
-          ctx.fillStyle = `rgba(255, 200, 50, ${a})`;
-          for (let c = 0; c < 4; c++) {
-            const cx2 = p.x + rand(5, p.w - 5);
-            const cy2 = p.y + rand(2, p.h - 3);
+          for (let b = 0; b < Math.ceil(p.w / 35); b++) {
+            ctx.fillStyle = '#3A7B9A';
             ctx.beginPath();
-            ctx.moveTo(cx2, cy2); ctx.lineTo(cx2 + 3, cy2 - 5);
-            ctx.lineTo(cx2 + 6, cy2); ctx.closePath();
+            ctx.arc(p.x + 8 + b * 35, p.y + 8, 2.5, 0, Math.PI * 2);
             ctx.fill();
+          }
+
+          const pulse = Math.sin(this.gameTime * 0.03) * 0.5 + 0.5;
+          const cx2 = p.x + p.w / 2;
+          const cy2 = p.y + p.h / 2;
+          const rx = p.w / 2 + 40;
+          const ry = 55 + pulse * 8;
+
+          ctx.fillStyle = `rgba(100, 180, 255, ${0.04 + pulse * 0.03})`;
+          ctx.beginPath();
+          ctx.ellipse(cx2, cy2, rx, ry, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = `rgba(100, 180, 255, ${0.15 + pulse * 0.12})`;
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 6]);
+          ctx.beginPath();
+          ctx.ellipse(cx2, cy2, rx, ry, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          for (let sp = 0; sp < 2; sp++) {
+            const spX = p.x + ((p.x * 3.7 + sp * 53 + this.gameTime * 0.3) % p.w);
+            const spY = p.y - 3 - Math.sin(this.gameTime * 0.08 + sp * 2.3) * 10 - 3;
+            const spA = Math.max(0, Math.sin(this.gameTime * 0.04 + sp * 3.1)) * 0.5;
+            ctx.fillStyle = `rgba(150, 210, 255, ${spA})`;
+            ctx.beginPath();
+            ctx.arc(spX, spY, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else {
+          ctx.fillStyle = '#D06A2A';
+          ctx.fillRect(p.x, p.y, p.w, 3);
+          ctx.fillStyle = '#7B2A0A';
+          ctx.fillRect(p.x, p.y + p.h - 3, p.w, 3);
+
+          for (let b = 0; b < Math.ceil(p.w / 35); b++) {
+            ctx.fillStyle = '#6B2A0A';
+            ctx.beginPath();
+            ctx.arc(p.x + 8 + b * 35, p.y + 8, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          if (p.state === 'activated') {
+            const a = 0.15 + Math.sin(Date.now() * 0.01) * 0.08;
+            ctx.fillStyle = `rgba(255, 200, 50, ${a})`;
+            for (let c = 0; c < 4; c++) {
+              const cx2 = p.x + rand(5, p.w - 5);
+              const cy2 = p.y + rand(2, p.h - 3);
+              ctx.beginPath();
+              ctx.moveTo(cx2, cy2); ctx.lineTo(cx2 + 3, cy2 - 5);
+              ctx.lineTo(cx2 + 6, cy2); ctx.closePath();
+              ctx.fill();
+            }
           }
         }
       }
@@ -1297,32 +1346,6 @@ class Game {
       ctx.fill();
     }
 
-    for (const m of this.magnets) {
-      if (!m.active) continue;
-      ctx.fillStyle = 'rgba(183, 65, 14, 0.06)';
-      ctx.beginPath();
-      ctx.arc(m.x + m.w / 2, m.y + m.h / 2, 160, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = 'rgba(183, 65, 14, 0.18)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([5, 5]);
-      ctx.beginPath();
-      ctx.arc(m.x + m.w / 2, m.y + m.h / 2, 160, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      ctx.fillStyle = '#8B4513';
-      ctx.fillRect(m.x, m.y, m.w, m.h);
-      ctx.fillStyle = '#B7410E';
-      ctx.fillRect(m.x, m.y, m.w, 4);
-      ctx.fillRect(m.x, m.y + m.h - 4, m.w, 4);
-      ctx.fillStyle = '#E8B830';
-      ctx.font = '10px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('MAGNET', m.x + m.w / 2, m.y + m.h / 2 + 4);
-    }
-
     for (const t of this.floatTexts) {
       ctx.fillStyle = `rgba(232, 184, 48, ${t.alpha})`;
       ctx.font = 'bold 14px monospace';
@@ -1331,6 +1354,16 @@ class Game {
     }
 
     this.player.draw(ctx);
+
+    if (this.player.groundPlat && this.player.groundPlat.type === 'magnet') {
+      const pa = 0.2 + Math.sin(this.gameTime * 0.05) * 0.1;
+      ctx.strokeStyle = `rgba(100, 180, 255, ${pa})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(this.player.x + this.player.w / 2, this.player.y + this.player.h / 2, 22, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     ctx.restore();
 
     drawHUD(ctx, this);
