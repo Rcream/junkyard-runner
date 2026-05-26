@@ -321,81 +321,344 @@ class Player {
 }
 
 // ============================================================
-// BACKGROUND
+// BACKGROUND — Junkyard landscape with green sky
 // ============================================================
-function drawBg(ctx, cx, W, H) {
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, '#0F0A05');
-  g.addColorStop(0.5, '#1A1510');
-  g.addColorStop(1, '#221A10');
+
+function drawSkyAndClouds(ctx, W, H) {
+  const g = ctx.createLinearGradient(0, 0, 0, 280);
+  g.addColorStop(0, '#4A6B3A');
+  g.addColorStop(1, '#3A5A2A');
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
+  ctx.fillRect(0, 0, W, 280);
 
-  // Layer 1 — Far car silhouettes (parallax 5%)
-  ctx.fillStyle = '#181818';
-  for (let i = 0; i < 10; i++) {
-    const bx = ((i * 290 - cx * 0.05) % 2900 + 2900) % 2900 - 120;
-    const by = H - 120 - Math.sin(i * 2.1) * 12 - (i % 3) * 8;
-    ctx.fillRect(bx, by, 55, 18);
-    ctx.fillRect(bx + 12, by - 11, 28, 11);
-    ctx.fillStyle = '#131313';
-    ctx.fillRect(bx + 15, by - 9, 10, 7);
-    ctx.fillStyle = '#181818';
-    ctx.fillRect(bx + 6, by + 14, 8, 6);
-    ctx.fillRect(bx + 41, by + 14, 8, 6);
+  ctx.fillStyle = '#1A150E';
+  ctx.fillRect(0, 280, W, H - 280);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.beginPath(); ctx.ellipse(120, 60, 80, 22, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(160, 50, 60, 18, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath(); ctx.ellipse(540, 80, 90, 24, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(570, 70, 55, 16, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.30)';
+  ctx.beginPath(); ctx.ellipse(820, 45, 70, 20, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.20)';
+  ctx.beginPath(); ctx.ellipse(350, 110, 50, 14, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+// ── Far layer helpers ──────────────────────────────────────
+function farCar(ctx, x, y) {
+  ctx.fillRect(x, y, 50, 13);
+  ctx.fillRect(x + 12, y - 8, 20, 8);
+}
+function farFridge(ctx, x, y) {
+  ctx.fillRect(x, y, 13, 26);
+}
+
+function drawFarJunkyard(ctx, worldX, W, H) {
+  const SEG = 600, NUM = 8;
+  const firstI = Math.floor((worldX - SEG) / SEG);
+  const lastI = Math.ceil((worldX + W) / SEG);
+  ctx.fillStyle = '#1A150E';
+
+  for (let i = firstI; i <= lastI; i++) {
+    const s = ((i % NUM) + NUM) % NUM;
+    const bx = i * SEG - worldX;
+    const by = H; // shorthand
+
+    ctx.beginPath();
+    ctx.moveTo(bx, by + 10);
+    if (s < 2) {
+      ctx.lineTo(bx + 80, by - 210); ctx.lineTo(bx + 180, by - 260);
+      ctx.lineTo(bx + 280, by - 225); ctx.lineTo(bx + 380, by - 270);
+      ctx.lineTo(bx + 460, by - 200); ctx.lineTo(bx + 540, by - 240);
+    } else if (s < 4) {
+      ctx.lineTo(bx + 60, by - 180); ctx.lineTo(bx + 160, by - 250);
+      ctx.lineTo(bx + 260, by - 215); ctx.lineTo(bx + 360, by - 280);
+      ctx.lineTo(bx + 440, by - 220); ctx.lineTo(bx + 560, by - 190);
+    } else if (s < 6) {
+      ctx.lineTo(bx + 100, by - 220); ctx.lineTo(bx + 200, by - 275);
+      ctx.lineTo(bx + 300, by - 240); ctx.lineTo(bx + 400, by - 260);
+      ctx.lineTo(bx + 480, by - 195); ctx.lineTo(bx + 560, by - 230);
+    } else {
+      ctx.lineTo(bx + 70, by - 190); ctx.lineTo(bx + 170, by - 265);
+      ctx.lineTo(bx + 270, by - 230); ctx.lineTo(bx + 370, by - 285);
+      ctx.lineTo(bx + 450, by - 210); ctx.lineTo(bx + 530, by - 255);
+    }
+    ctx.lineTo(bx + SEG, by + 10);
+    ctx.closePath();
+    ctx.fill();
+
+    if (s % 2 === 0) {
+      farCar(ctx, bx + 60,  by - 268);
+      farCar(ctx, bx + 240, by - 240);
+      farFridge(ctx, bx + 420, by - 265);
+    } else if (s === 1 || s === 5) {
+      farFridge(ctx, bx + 50, by - 255);
+      farCar(ctx, bx + 180, by - 275);
+      farCar(ctx, bx + 400, by - 230);
+    } else {
+      farCar(ctx, bx + 100, by - 260);
+      farFridge(ctx, bx + 260, by - 245);
+      farFridge(ctx, bx + 420, by - 215);
+    }
+  }
+}
+
+// ── Mid layer helpers ──────────────────────────────────────
+function midCar(ctx, x, y, c) {
+  ctx.fillStyle = c[0];
+  ctx.fillRect(x, y, 50, 13);
+  ctx.fillRect(x + 12, y - 9, 22, 9);
+  ctx.fillStyle = c[1];
+  ctx.fillRect(x + 15, y - 7, 7, 5);
+  ctx.fillStyle = '#2A2A2A';
+  ctx.fillRect(x + 7, y + 11, 5, 4);
+  ctx.fillRect(x + 38, y + 11, 5, 4);
+}
+function midFridge(ctx, x, y) {
+  ctx.fillStyle = '#8A8A8A';
+  ctx.fillRect(x, y, 16, 36);
+  ctx.fillStyle = '#7A7A7A';
+  ctx.fillRect(x + 8, y + 2, 1, 32);
+  ctx.fillRect(x + 11, y + 8, 2, 5);
+}
+function midMicro(ctx, x, y) {
+  ctx.fillStyle = '#3A3A3A';
+  ctx.fillRect(x, y, 24, 12);
+  ctx.fillStyle = '#1A1A1A';
+  ctx.fillRect(x + 4, y + 2, 13, 8);
+  ctx.fillStyle = '#555';
+  ctx.beginPath(); ctx.arc(x + 19, y + 4, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 19, y + 8, 1.5, 0, Math.PI * 2); ctx.fill();
+}
+function midBeam(ctx, x, y) {
+  ctx.fillStyle = '#4A3A2A';
+  ctx.fillRect(x, y, 34, 4);
+  ctx.fillRect(x + 4, y - 5, 4, 14);
+  ctx.fillRect(x + 26, y - 5, 4, 14);
+}
+function midDrum(ctx, x, y) {
+  ctx.fillStyle = '#3A3A3A';
+  ctx.fillRect(x, y, 10, 15);
+  ctx.fillStyle = '#2A2A2A';
+  ctx.fillRect(x, y + 4, 10, 2);
+  ctx.fillRect(x, y + 10, 10, 2);
+}
+
+function drawMidJunkyard(ctx, worldX, W, H) {
+  const SEG = 500, NUM = 8;
+  const firstI = Math.floor((worldX - SEG) / SEG);
+  const lastI = Math.ceil((worldX + W) / SEG);
+  const by = H;
+
+  // Mound bases
+  for (let i = firstI; i <= lastI; i++) {
+    const s = ((i % NUM) + NUM) % NUM;
+    const bx = i * SEG - worldX;
+
+    ctx.fillStyle = '#2A2018';
+    ctx.beginPath();
+    ctx.moveTo(bx, by + 10);
+    if (s % 3 === 0) {
+      ctx.lineTo(bx + 80, by - 170); ctx.lineTo(bx + 200, by - 210);
+      ctx.lineTo(bx + 320, by - 180); ctx.lineTo(bx + 450, by - 130);
+    } else if (s % 3 === 1) {
+      ctx.lineTo(bx + 100, by - 190); ctx.lineTo(bx + 240, by - 220);
+      ctx.lineTo(bx + 360, by - 195); ctx.lineTo(bx + 470, by - 140);
+    } else {
+      ctx.lineTo(bx + 60, by - 150); ctx.lineTo(bx + 180, by - 200);
+      ctx.lineTo(bx + 300, by - 215); ctx.lineTo(bx + 420, by - 170);
+      ctx.lineTo(bx + 490, by - 120);
+    }
+    ctx.lineTo(bx + SEG, by + 10);
+    ctx.closePath();
+    ctx.fill();
   }
 
-  // Layer 2 — Midground tires & pipes (parallax 25%)
-  ctx.fillStyle = '#262626';
-  ctx.strokeStyle = '#262626';
-  ctx.lineWidth = 3;
-  for (let i = 0; i < 8; i++) {
-    const bx = ((i * 360 + 60 - cx * 0.25) % 2880 + 2880) % 2880 - 150;
-    const by = H - 70 - Math.sin(i * 1.3) * 18 - i * 4;
-    if (i % 2 === 0) {
-      ctx.beginPath(); ctx.arc(bx, by - 8, 11, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(bx, by + 2, 11, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(bx, by + 12, 11, 0, Math.PI * 2); ctx.stroke();
-    } else {
-      ctx.lineWidth = 5;
-      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + 22, by - 28); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(bx + 8, by - 4); ctx.lineTo(bx + 30, by - 24); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(bx - 4, by + 4); ctx.lineTo(bx + 18, by - 32); ctx.stroke();
-      ctx.lineWidth = 3;
+  const blue  = ['#3A4A5A', '#2A3A4A'];
+  const red   = ['#6A3A3A', '#5A2A2A'];
+  const grey  = ['#4A4A4A', '#3A3A3A'];
+
+  for (let i = firstI; i <= lastI; i++) {
+    const s = ((i % NUM) + NUM) % NUM;
+    const bx = i * SEG - worldX;
+
+    switch (s) {
+      case 0:
+        midCar(ctx, bx + 50, by - 195, blue);
+        midFridge(ctx, bx + 200, by - 185);
+        midDrum(ctx, bx + 300, by - 35);
+        midDrum(ctx, bx + 315, by - 35);
+        midBeam(ctx, bx + 370, by - 65);
+        midCar(ctx, bx + 420, by - 125, grey);
+        break;
+      case 1:
+        midCar(ctx, bx + 30, by - 170, red);
+        midCar(ctx, bx + 180, by - 140, grey);
+        midMicro(ctx, bx + 340, by - 200);
+        midDrum(ctx, bx + 410, by - 30);
+        midBeam(ctx, bx + 440, by - 95);
+        break;
+      case 2:
+        midFridge(ctx, bx + 40, by - 190);
+        midBeam(ctx, bx + 130, by - 55);
+        midCar(ctx, bx + 200, by - 170, blue);
+        midDrum(ctx, bx + 350, by - 35);
+        midMicro(ctx, bx + 400, by - 110);
+        break;
+      case 3:
+        midCar(ctx, bx + 70, by - 185, grey);
+        midFridge(ctx, bx + 220, by - 205);
+        midCar(ctx, bx + 360, by - 140, red);
+        midDrum(ctx, bx + 460, by - 45);
+        midDrum(ctx, bx + 475, by - 45);
+        break;
+      case 4:
+        midCar(ctx, bx + 20, by - 155, blue);
+        midCar(ctx, bx + 160, by - 180, red);
+        midDrum(ctx, bx + 300, by - 30);
+        midBeam(ctx, bx + 350, by - 85);
+        midFridge(ctx, bx + 420, by - 125);
+        break;
+      case 5:
+        midFridge(ctx, bx + 30, by - 210);
+        midMicro(ctx, bx + 120, by - 190);
+        midCar(ctx, bx + 200, by - 145, grey);
+        midDrum(ctx, bx + 350, by - 25);
+        midCar(ctx, bx + 400, by - 110, blue);
+        break;
+      case 6:
+        midCar(ctx, bx + 60, by - 195, red);
+        midBeam(ctx, bx + 200, by - 65);
+        midFridge(ctx, bx + 250, by - 155);
+        midDrum(ctx, bx + 380, by - 40);
+        midDrum(ctx, bx + 395, by - 40);
+        midMicro(ctx, bx + 440, by - 105);
+        break;
+      case 7:
+        midBeam(ctx, bx + 30, by - 60);
+        midCar(ctx, bx + 80, by - 165, blue);
+        midCar(ctx, bx + 220, by - 140, red);
+        midFridge(ctx, bx + 360, by - 180);
+        midDrum(ctx, bx + 450, by - 50);
+        break;
     }
   }
 
-  // Layer 3 — Foreground debris (parallax 50%)
-  ctx.fillStyle = '#343434';
-  ctx.strokeStyle = '#343434';
-  ctx.lineWidth = 2;
-  for (let i = 0; i < 14; i++) {
-    const bx = ((i * 190 + 80 - cx * 0.5) % 2660 + 2660) % 2660 - 120;
-    const by = H - 35 + Math.sin(i * 0.7) * 8;
-    if (i % 3 === 0) {
-      ctx.fillRect(bx, by - 16, 10, 18);
-      ctx.fillStyle = '#282828';
-      ctx.fillRect(bx, by - 11, 10, 2);
-      ctx.fillRect(bx, by - 4, 10, 2);
-      ctx.fillStyle = '#343434';
-    } else if (i % 3 === 1) {
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx + 10, by - 4);
-      ctx.lineTo(bx + 14, by + 4);
-      ctx.closePath();
-      ctx.fill();
-    } else {
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.lineTo(bx, by - 20);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(bx, by - 20);
-      ctx.lineTo(bx + 4, by - 22);
-      ctx.stroke();
+  const band = ctx.createLinearGradient(0, 300, 0, 450);
+  band.addColorStop(0, 'rgba(0,0,0,0)');
+  band.addColorStop(0.35, 'rgba(0,0,0,0.2)');
+  band.addColorStop(0.65, 'rgba(0,0,0,0.2)');
+  band.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = band;
+  ctx.fillRect(0, 300, W, 150);
+}
+
+function drawForeJunkyard(ctx, worldX, W, H) {
+  const SEG = 400, NUM = 6;
+  const firstI = Math.floor((worldX - SEG) / SEG);
+  const lastI = Math.ceil((worldX + W) / SEG);
+  const by = H;
+
+  for (let i = firstI; i <= lastI; i++) {
+    const s = ((i % NUM) + NUM) % NUM;
+    const bx = i * SEG - worldX;
+
+    switch (s) {
+      case 0:
+        ctx.fillStyle = '#6A6A6A';
+        ctx.fillRect(bx + 10, by - 72, 22, 72);
+        ctx.fillStyle = '#5A5A5A';
+        ctx.fillRect(bx + 10, by - 70, 22, 3);
+        ctx.fillRect(bx + 21, by - 64, 2, 6);
+        midDrum(ctx, bx + 60, by - 52);
+        midDrum(ctx, bx + 75, by - 52);
+        ctx.strokeStyle = '#2A2A2A';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(bx + 130, by); ctx.lineTo(bx + 140, by - 85); ctx.stroke();
+        ctx.strokeStyle = '#1A1A1A';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(bx + 140, by - 85);
+        ctx.quadraticCurveTo(bx + 175, by - 45, bx + 120, by - 15);
+        ctx.stroke();
+        break;
+      case 1:
+        ctx.fillStyle = '#4A3A2A';
+        ctx.fillRect(bx + 20, by - 48, 60, 5);
+        ctx.fillRect(bx + 28, by - 56, 5, 22);
+        ctx.fillRect(bx + 67, by - 56, 5, 22);
+        midDrum(ctx, bx + 120, by - 38);
+        midDrum(ctx, bx + 135, by - 38);
+        midDrum(ctx, bx + 150, by - 38);
+        ctx.fillStyle = '#3A3A3A';
+        ctx.fillRect(bx + 220, by - 32, 80, 16);
+        ctx.fillStyle = '#2A2A2A';
+        ctx.fillRect(bx + 220, by - 32, 80, 3);
+        ctx.fillRect(bx + 220, by - 17, 80, 3);
+        break;
+      case 2:
+        ctx.fillStyle = '#6A6A6A';
+        ctx.fillRect(bx + 5, by - 62, 20, 62);
+        ctx.fillStyle = '#5A5A5A';
+        ctx.fillRect(bx + 5, by - 60, 20, 2);
+        ctx.fillRect(bx + 16, by - 55, 2, 5);
+        ctx.strokeStyle = '#4A3A2A';
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(bx + 60, by); ctx.lineTo(bx + 100, by - 75); ctx.stroke();
+        ctx.strokeStyle = '#1A1A1A';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(bx + 100, by - 75);
+        ctx.quadraticCurveTo(bx + 130, by - 35, bx + 80, by - 8);
+        ctx.stroke();
+        break;
+      case 3:
+        midDrum(ctx, bx + 30, by - 38);
+        midDrum(ctx, bx + 45, by - 38);
+        midDrum(ctx, bx + 35, by - 55);
+        ctx.fillStyle = '#3A4A5A';
+        ctx.fillRect(bx + 80, by - 34, 55, 11);
+        ctx.fillRect(bx + 95, by - 43, 22, 9);
+        ctx.fillStyle = '#2A2A2A';
+        ctx.fillRect(bx + 86, by - 24, 5, 4);
+        ctx.fillRect(bx + 124, by - 24, 5, 4);
+        break;
+      case 4:
+        ctx.fillStyle = '#4A3A2A';
+        ctx.fillRect(bx + 10, by - 43, 75, 7);
+        ctx.fillStyle = '#3A2A1A';
+        ctx.fillRect(bx + 18, by - 52, 5, 24);
+        ctx.fillRect(bx + 72, by - 52, 5, 24);
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(bx + 35, by - 43);
+        ctx.lineTo(bx + 32, by - 28); ctx.lineTo(bx + 39, by - 18); ctx.lineTo(bx + 35, by - 6);
+        ctx.stroke();
+        break;
+      case 5:
+        ctx.fillStyle = '#6A6A6A';
+        ctx.fillRect(bx + 50, by - 66, 18, 66);
+        ctx.fillStyle = '#5A5A5A';
+        ctx.fillRect(bx + 50, by - 64, 18, 2);
+        ctx.fillRect(bx + 60, by - 59, 2, 5);
+        midDrum(ctx, bx + 10, by - 33);
+        midDrum(ctx, bx + 25, by - 33);
+        ctx.fillStyle = '#6A3A3A';
+        ctx.fillRect(bx + 100, by - 28, 45, 11);
+        ctx.fillRect(bx + 112, by - 36, 18, 8);
+        ctx.fillStyle = '#2A2A2A';
+        ctx.fillRect(bx + 105, by - 19, 5, 4);
+        ctx.fillRect(bx + 135, by - 19, 5, 4);
+        break;
     }
   }
+}
+
+function drawBg(ctx, cx, W, H) {
+  drawSkyAndClouds(ctx, W, H);
+  drawFarJunkyard(ctx, cx * 0.15, W, H);
+  drawMidJunkyard(ctx, cx * 0.40, W, H);
+  drawForeJunkyard(ctx, cx * 0.70, W, H);
 }
 
 // ============================================================
