@@ -216,35 +216,105 @@ class Player {
       ctx.translate(-x, -y);
     }
 
-    const lo = Math.sin(this.walkFrame * 0.25) * 3;
-    ctx.fillStyle = '#2A3A4A';
-    ctx.fillRect(x + 3, y + h - 9, 6, 9 + lo);
-    ctx.fillRect(x + w - 9, y + h - 9, 6, 9 - lo);
+    // Treads
+    ctx.fillStyle = '#2A2A2A';
+    ctx.fillRect(x + 1, y + 22, 7, 8);
+    ctx.fillRect(x + w - 8, y + 22, 7, 8);
+    ctx.strokeStyle = '#444';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 1, y + 22, 7, 8);
+    ctx.strokeRect(x + w - 8, y + 22, 7, 8);
 
-    ctx.fillStyle = '#3A4A5A';
-    ctx.fillRect(x + 2, y + 10, w - 4, h - 19);
+    // Tread bars (animated)
+    const treadOff = Math.floor(this.walkFrame * 0.25) % 5;
+    ctx.fillStyle = '#555';
+    for (let b = 0; b < 2; b++) {
+      const bx1 = x + 3 + ((b * 3 + treadOff) % 5);
+      ctx.fillRect(bx1, y + 24, 2, 4);
+    }
+    for (let b = 0; b < 2; b++) {
+      const bx2 = x + w - 6 + ((b * 3 + treadOff) % 5);
+      ctx.fillRect(bx2, y + 24, 2, 4);
+    }
 
-    ctx.fillStyle = '#B87C4A';
-    ctx.fillRect(x - 1, y + 14, 5, 7);
-    ctx.fillRect(x + w - 4, y + 14, 5, 7);
-
-    ctx.fillStyle = '#D2A679';
+    // Arms
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(x + w / 2, y + 8, 7, 0, Math.PI * 2);
+    ctx.moveTo(x + 3, y + 14);
+    ctx.lineTo(x - 1, y + 14);
+    ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x - 1, y + 14);
+    ctx.lineTo(x - 3, y + 12);
+    ctx.moveTo(x - 1, y + 14);
+    ctx.lineTo(x - 3, y + 16);
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + w - 3, y + 14);
+    ctx.lineTo(x + w + 1, y + 14);
+    ctx.stroke();
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + w + 1, y + 14);
+    ctx.lineTo(x + w + 3, y + 12);
+    ctx.moveTo(x + w + 1, y + 14);
+    ctx.lineTo(x + w + 3, y + 16);
+    ctx.stroke();
+
+    // Body
+    ctx.fillStyle = '#4A4A4A';
+    ctx.fillRect(x + 3, y + 8, w - 6, 14);
+
+    // Rivets
+    ctx.fillStyle = '#777';
+    ctx.beginPath(); ctx.arc(x + 5, y + 10, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + w - 5, y + 10, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + 5, y + 19, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + w - 5, y + 19, 1.5, 0, Math.PI * 2); ctx.fill();
+
+    // Rust spots
+    ctx.fillStyle = '#B7410E';
+    ctx.fillRect(x + 7, y + 12, 3, 2);
+    ctx.fillRect(x + 14, y + 16, 2, 3);
+
+    // Neck
+    ctx.fillStyle = '#4A4A4A';
+    ctx.beginPath();
+    ctx.arc(x + w / 2, y + 8, 3, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#C85A1A';
-    ctx.beginPath();
-    ctx.arc(x + w / 2, y + 4, 9, Math.PI, 0);
-    ctx.fill();
-    ctx.fillRect(x + w / 2 - 10, y + 3, 20, 3);
+    // Head
+    ctx.fillStyle = '#555';
+    ctx.fillRect(x + 5, y + 1, w - 10, 9);
 
-    ctx.fillStyle = '#FFF';
-    ctx.fillRect(x + w / 2 - 4, y + 6, 3, 3);
-    ctx.fillRect(x + w / 2 + 1, y + 6, 3, 3);
-    ctx.fillStyle = '#222';
-    ctx.fillRect(x + w / 2 - 3, y + 7, 2, 2);
-    ctx.fillRect(x + w / 2 + 2, y + 7, 2, 2);
+    // Eye glow
+    ctx.fillStyle = 'rgba(232, 184, 48, 0.25)';
+    ctx.beginPath();
+    ctx.arc(x + w / 2, y + 5, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye
+    ctx.fillStyle = '#E8B830';
+    ctx.fillRect(x + w / 2 - 3, y + 3, 6, 4);
+
+    // Antenna
+    ctx.strokeStyle = '#999';
+    ctx.lineWidth = 1.5;
+    const antWobble = Math.sin(this.walkFrame * 0.15) * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x + w / 2, y + 1);
+    ctx.lineTo(x + w / 2 + antWobble, y - 5);
+    ctx.stroke();
+
+    // Antenna tip (blinking)
+    const tipOn = Math.floor(Date.now() / 300) % 2 === 0;
+    ctx.fillStyle = tipOn ? '#E03030' : '#880000';
+    ctx.beginPath();
+    ctx.arc(x + w / 2 + antWobble, y - 5, 2, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore();
   }
@@ -255,48 +325,76 @@ class Player {
 // ============================================================
 function drawBg(ctx, cx, W, H) {
   const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, '#1A1A1A');
-  g.addColorStop(0.35, '#222222');
-  g.addColorStop(1, '#2A2418');
+  g.addColorStop(0, '#0F0A05');
+  g.addColorStop(0.5, '#1A1510');
+  g.addColorStop(1, '#221A10');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 
-  ctx.fillStyle = '#2A2A2A';
-  for (let i = 0; i < 30; i++) {
-    const bx = ((i * 180 - cx * 0.08) % 5400 + 5400) % 5400 - 200;
-    const bh = 80 + Math.sin(i * 1.7) * 40 + Math.cos(i * 0.7) * 30;
-    const by = H - 100 - bh;
-    ctx.beginPath();
-    ctx.moveTo(bx, H);
-    ctx.lineTo(bx + 15 + Math.sin(i * 2.3) * 10, by + 20);
-    ctx.lineTo(bx + 45 + Math.cos(i * 1.1) * 10, by + 5);
-    ctx.lineTo(bx + 80 + Math.sin(i * 0.9) * 15, by + 30);
-    ctx.lineTo(bx + 110 + Math.cos(i * 1.5) * 10, H);
-    ctx.closePath();
-    ctx.fill();
+  // Layer 1 — Far car silhouettes (parallax 5%)
+  ctx.fillStyle = '#181818';
+  for (let i = 0; i < 10; i++) {
+    const bx = ((i * 290 - cx * 0.05) % 2900 + 2900) % 2900 - 120;
+    const by = H - 120 - Math.sin(i * 2.1) * 12 - (i % 3) * 8;
+    ctx.fillRect(bx, by, 55, 18);
+    ctx.fillRect(bx + 12, by - 11, 28, 11);
+    ctx.fillStyle = '#131313';
+    ctx.fillRect(bx + 15, by - 9, 10, 7);
+    ctx.fillStyle = '#181818';
+    ctx.fillRect(bx + 6, by + 14, 8, 6);
+    ctx.fillRect(bx + 41, by + 14, 8, 6);
   }
 
-  ctx.fillStyle = '#353535';
-  for (let i = 0; i < 20; i++) {
-    const bx = ((i * 270 + 100 - cx * 0.25) % 5400 + 5400) % 5400 - 200;
-    const by = H - 80 - Math.sin(i * 1.3) * 20;
-    ctx.beginPath();
-    ctx.arc(bx, by, 20 + Math.sin(i * 2.1) * 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#222';
-    ctx.beginPath();
-    ctx.arc(bx, by, 8 + Math.sin(i * 1.5) * 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#353535';
+  // Layer 2 — Midground tires & pipes (parallax 25%)
+  ctx.fillStyle = '#262626';
+  ctx.strokeStyle = '#262626';
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 8; i++) {
+    const bx = ((i * 360 + 60 - cx * 0.25) % 2880 + 2880) % 2880 - 150;
+    const by = H - 70 - Math.sin(i * 1.3) * 18 - i * 4;
+    if (i % 2 === 0) {
+      ctx.beginPath(); ctx.arc(bx, by - 8, 11, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(bx, by + 2, 11, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(bx, by + 12, 11, 0, Math.PI * 2); ctx.stroke();
+    } else {
+      ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + 22, by - 28); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx + 8, by - 4); ctx.lineTo(bx + 30, by - 24); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx - 4, by + 4); ctx.lineTo(bx + 18, by - 32); ctx.stroke();
+      ctx.lineWidth = 3;
+    }
   }
 
-  ctx.fillStyle = '#3D3D3D';
-  for (let i = 0; i < 15; i++) {
-    const bx = ((i * 320 + 200 - cx * 0.5) % 4800 + 4800) % 4800 - 200;
-    const by = H - 60 + Math.sin(i * 0.8) * 10;
-    ctx.fillRect(bx, by, 60 + Math.sin(i * 1.7) * 20, 8);
-    ctx.fillRect(bx + 10, by - 12, 8, 12);
-    ctx.fillRect(bx + 30, by - 8, 8, 8);
+  // Layer 3 — Foreground debris (parallax 50%)
+  ctx.fillStyle = '#343434';
+  ctx.strokeStyle = '#343434';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 14; i++) {
+    const bx = ((i * 190 + 80 - cx * 0.5) % 2660 + 2660) % 2660 - 120;
+    const by = H - 35 + Math.sin(i * 0.7) * 8;
+    if (i % 3 === 0) {
+      ctx.fillRect(bx, by - 16, 10, 18);
+      ctx.fillStyle = '#282828';
+      ctx.fillRect(bx, by - 11, 10, 2);
+      ctx.fillRect(bx, by - 4, 10, 2);
+      ctx.fillStyle = '#343434';
+    } else if (i % 3 === 1) {
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + 10, by - 4);
+      ctx.lineTo(bx + 14, by + 4);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx, by - 20);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(bx, by - 20);
+      ctx.lineTo(bx + 4, by - 22);
+      ctx.stroke();
+    }
   }
 }
 
@@ -338,30 +436,83 @@ class LevelGen {
       return;
     }
 
-    const count = 2 + (d < 2.5 ? (Math.random() < 0.5 ? 1 : 0) : 0);
-    let py = 440;
+    const maxCount = 2 + (d < 2.5 ? (Math.random() < 0.5 ? 1 : 0) : 0);
+    const held = [];
+    const MIN_H_GAP = 30;
+    const MAX_V_GAP = 80;
+    const MIN_V_GAP = 20;
+    const Y_RANGE_LOW = 250;
+    const Y_RANGE_HIGH = 470;
 
-    for (let i = 0; i < count; i++) {
-      const px = startX + 30 + i * (CFG.CHUNK_W - 60) / count + rand(-15, 15);
-      const pw = 60 + rand(0, 85);
-      py = clamp(py + rand(-50, 40), 260, 470);
+    for (let i = 0; i < maxCount; i++) {
+      let placed = false;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        let px, py, pw;
+        if (i === 0) {
+          px = startX + 40 + rand(0, CFG.CHUNK_W - 120);
+          py = rand(410, 460);
+          pw = 70 + rand(0, 80);
+        } else {
+          const prev = held[held.length - 1];
+          const xMin = prev.x + prev.w + MIN_H_GAP;
+          const xMax = startX + CFG.CHUNK_W - 50;
+          if (xMin >= xMax) break;
+          px = rand(xMin, xMax);
+          pw = 60 + rand(0, 85);
+          const yOpts = [];
+          for (let yc = prev.y - MAX_V_GAP; yc <= prev.y + MAX_V_GAP; yc += 5) {
+            if (yc < Y_RANGE_LOW || yc > Y_RANGE_HIGH) continue;
+            if (Math.abs(yc - prev.y) < MIN_V_GAP) continue;
+            yOpts.push(yc);
+          }
+          if (yOpts.length === 0) continue;
+          py = yOpts[Math.floor(rand(0, yOpts.length))];
+        }
+        if (pw < 40) continue;
+
+        const cand = { x: px, y: py, w: pw, h: CFG.PLAT_H };
+        let overlap = false;
+        for (const hp of held) {
+          if (aabb(cand, hp)) { overlap = true; break; }
+        }
+        if (!overlap) {
+          for (const ep of g.platforms) {
+            if (ep.x + ep.w > startX - 40 && ep.x < startX + CFG.CHUNK_W + 40) {
+              if (aabb(cand, ep)) { overlap = true; break; }
+            }
+          }
+        }
+        if (!overlap) {
+          held.push(cand);
+          placed = true;
+          break;
+        }
+      }
+    }
+
+    if (held.length === 0) {
+      held.push({ x: startX + 50, y: 440, w: 80, h: CFG.PLAT_H });
+    }
+
+    for (const p of held) {
       const crum = rand(0, 1) < 0.15 + d * 0.04;
-
-      const p = {
-        x: px, y: py, w: pw, h: CFG.PLAT_H,
+      const fp = {
+        x: p.x, y: p.y, w: p.w, h: CFG.PLAT_H,
         type: crum ? 'crumbling' : 'static',
         broken: false, active: true,
         state: 'solid', timer: 0, shakeOff: 0, respawnT: 0
       };
-      g.platforms.push(p);
+      g.platforms.push(fp);
 
       for (let s = 0; s < 1 + Math.floor(rand(0, 2)); s++) {
         g.scraps.push({
-          x: px + rand(10, pw - 10), y: p.y - CFG.SH - 2,
+          x: p.x + rand(10, p.w - 10), y: p.y - CFG.SH - 2,
           w: CFG.SW, h: CFG.SH, col: false, bob: rand(0, Math.PI * 2)
         });
       }
     }
+
+    const py = held.length > 0 ? held[held.length - 1].y : 440;
 
     if (this.chunks > 3 && rand(0, 1) < 0.1 + d * 0.04) {
       const dir = rand(0, 1) < 0.5 ? 1 : -1;
