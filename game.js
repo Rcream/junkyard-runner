@@ -764,7 +764,8 @@ class LevelGen {
         x: p.x, y: p.y, w: p.w, h: CFG.PLAT_H,
         type: crum ? 'crumbling' : (mag ? 'magnet' : 'static'),
         broken: false, active: true,
-        state: 'solid', timer: 0, shakeOff: 0, respawnT: 0
+        state: 'solid', timer: 0, shakeOff: 0, respawnT: 0,
+        standFrames: 0
       };
       g.platforms.push(fp);
 
@@ -1126,12 +1127,14 @@ class Game {
       p.respawnT--;
       if (p.respawnT <= 0) {
         p.broken = false; p.active = true;
-        p.state = 'solid'; p.timer = 0; p.shakeOff = 0;
+        p.state = 'solid'; p.timer = 0; p.shakeOff = 0; p.standFrames = 0;
       }
       return;
     }
 
     const onIt = this.player.groundPlat === p && this.player.grounded;
+
+    if (onIt) p.standFrames++;
 
     if (p.state === 'solid' && onIt) {
       p.state = 'activated';
@@ -1175,6 +1178,101 @@ class Game {
     this.player.vx = 0; this.player.vy = 0;
   }
 
+  drawCrumblingPlatform(p, ctx, gameTime) {
+    const w = p.w, h = p.h, x = p.x, y = p.y;
+
+    if (p.broken) {
+      const prog = Math.min(1, p.respawnT / CFG.CRUMBLE_RESPAWN);
+      if (prog < 0.3) return;
+      ctx.strokeStyle = `rgba(80, 40, 20, ${prog * 0.2})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + w, y);
+      ctx.lineTo(x + w, y + h);
+      let rx = x + w;
+      for (let n = 0; n < 5; n++) {
+        const nx = rx - w / 5;
+        ctx.lineTo(nx, y + h - ((n + 1) % 2) * 4);
+        rx = nx;
+      }
+      ctx.closePath();
+      ctx.stroke();
+      return;
+    }
+
+    const seed = x * 0.13;
+    let color, cracks, nd, bolts, rusts;
+    if (p.state === 'solid') {
+      color = '#6B3A1A'; cracks = 2;
+      nd = [3, 5, 2, 4]; bolts = 2; rusts = 0;
+    } else if (p.state === 'activated') {
+      color = '#8B3A1A'; cracks = 4;
+      nd = [6, 4, 8, 5, 7, 3]; bolts = 3; rusts = 2;
+    } else {
+      color = '#B7410E'; cracks = 6;
+      nd = [10, 5, 12, 7, 9, 4, 11, 6]; bolts = 3; rusts = 4;
+    }
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w, y);
+    ctx.lineTo(x + w, y + h);
+    let rx = x + w;
+    const segW = w / nd.length;
+    for (let n = 0; n < nd.length; n++) {
+      const nx = rx - segW;
+      const d = nd[n] + Math.sin(seed + n * 3) * 2;
+      ctx.lineTo(nx, y + h - d);
+      rx = nx;
+    }
+    ctx.lineTo(x, y + h);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,200,150,0.15)';
+    ctx.fillRect(x, y, w, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(x, y + h - 2, w, 2);
+
+    ctx.strokeStyle = '#3A1A0A';
+    ctx.lineWidth = 1;
+    for (let c = 0; c < cracks; c++) {
+      const sx = x + 6 + c * (w / Math.max(1, cracks)) + Math.sin(seed + c * 2) * 5;
+      const sy = y + 2 + Math.sin(seed + c * 3) * 3;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      let cx2 = sx, cy2 = sy;
+      for (let s = 0; s < 3; s++) {
+        cx2 += 4 + Math.sin(seed + c * 5 + s * 2) * 3;
+        cy2 += 2 + Math.sin(seed + c * 7 + s * 3) * 3;
+        ctx.lineTo(cx2, cy2);
+      }
+      ctx.stroke();
+    }
+
+    const bpos = [[x + 5, y + 4], [x + w - 5, y + 4]];
+    if (bolts > 2) bpos.push([x + w / 2 - 2, y + 4]);
+    for (let b = 0; b < bolts && b < bpos.length; b++) {
+      const bx = bpos[b][0], by_ = bpos[b][1];
+      ctx.fillStyle = '#4A4A4A';
+      ctx.beginPath(); ctx.arc(bx, by_, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#2A2A2A';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(bx - 2, by_); ctx.lineTo(bx + 2, by_); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(bx, by_ - 2); ctx.lineTo(bx, by_ + 2); ctx.stroke();
+    }
+
+    for (let r = 0; r < rusts; r++) {
+      const rx2 = x + 10 + ((seed * 7 + r * 31) % (w - 20 | 1));
+      const ry2 = y + 4 + r * 4 + Math.sin(seed + r * 7) * 3;
+      const a = Math.max(0, 0.3 + Math.sin(gameTime * 0.04 + r * 2.1) * 0.15);
+      ctx.fillStyle = `rgba(200, 80, 30, ${a})`;
+      ctx.beginPath(); ctx.arc(rx2, ry2, 1.5 + Math.sin(gameTime * 0.03 + r * 3) * 0.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
   render() {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, CFG.W, CFG.H);
@@ -1204,54 +1302,53 @@ class Game {
 
       if (p.type === 'magnet' && !p.broken) {
         ctx.fillStyle = '#2A6B8A';
-      } else {
-        ctx.fillStyle = p.broken ? '#444' : (p.type === 'crumbling' ? '#B55A1A' : '#B7410E');
-      }
-      ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.fillStyle = '#4A9BC8';
+        ctx.fillRect(p.x, p.y, p.w, 3);
+        ctx.fillStyle = '#1A4B6A';
+        ctx.fillRect(p.x, p.y + p.h - 3, p.w, 3);
 
-      if (!p.broken) {
-        if (p.type === 'magnet') {
-          ctx.fillStyle = '#4A9BC8';
-          ctx.fillRect(p.x, p.y, p.w, 3);
-          ctx.fillStyle = '#1A4B6A';
-          ctx.fillRect(p.x, p.y + p.h - 3, p.w, 3);
-
-          for (let b = 0; b < Math.ceil(p.w / 35); b++) {
-            ctx.fillStyle = '#3A7B9A';
-            ctx.beginPath();
-            ctx.arc(p.x + 8 + b * 35, p.y + 8, 2.5, 0, Math.PI * 2);
-            ctx.fill();
-          }
-
-          const pulse = Math.sin(this.gameTime * 0.03) * 0.5 + 0.5;
-          const cx2 = p.x + p.w / 2;
-          const cy2 = p.y + p.h / 2;
-          const rx = p.w / 2 + 40;
-          const ry = 55 + pulse * 8;
-
-          ctx.fillStyle = `rgba(100, 180, 255, ${0.04 + pulse * 0.03})`;
+        for (let b = 0; b < Math.ceil(p.w / 35); b++) {
+          ctx.fillStyle = '#3A7B9A';
           ctx.beginPath();
-          ctx.ellipse(cx2, cy2, rx, ry, 0, 0, Math.PI * 2);
+          ctx.arc(p.x + 8 + b * 35, p.y + 8, 2.5, 0, Math.PI * 2);
           ctx.fill();
+        }
 
-          ctx.strokeStyle = `rgba(100, 180, 255, ${0.15 + pulse * 0.12})`;
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([4, 6]);
+        const pulse = Math.sin(this.gameTime * 0.03) * 0.5 + 0.5;
+        const cx2 = p.x + p.w / 2;
+        const cy2 = p.y + p.h / 2;
+        const rx = p.w / 2 + 40;
+        const ry = 55 + pulse * 8;
+
+        ctx.fillStyle = `rgba(100, 180, 255, ${0.04 + pulse * 0.03})`;
+        ctx.beginPath();
+        ctx.ellipse(cx2, cy2, rx, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = `rgba(100, 180, 255, ${0.15 + pulse * 0.12})`;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 6]);
+        ctx.beginPath();
+        ctx.ellipse(cx2, cy2, rx, ry, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        for (let sp = 0; sp < 2; sp++) {
+          const spX = p.x + ((p.x * 3.7 + sp * 53 + this.gameTime * 0.3) % p.w);
+          const spY = p.y - 3 - Math.sin(this.gameTime * 0.08 + sp * 2.3) * 10 - 3;
+          const spA = Math.max(0, Math.sin(this.gameTime * 0.04 + sp * 3.1)) * 0.5;
+          ctx.fillStyle = `rgba(150, 210, 255, ${spA})`;
           ctx.beginPath();
-          ctx.ellipse(cx2, cy2, rx, ry, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.setLineDash([]);
-
-          for (let sp = 0; sp < 2; sp++) {
-            const spX = p.x + ((p.x * 3.7 + sp * 53 + this.gameTime * 0.3) % p.w);
-            const spY = p.y - 3 - Math.sin(this.gameTime * 0.08 + sp * 2.3) * 10 - 3;
-            const spA = Math.max(0, Math.sin(this.gameTime * 0.04 + sp * 3.1)) * 0.5;
-            ctx.fillStyle = `rgba(150, 210, 255, ${spA})`;
-            ctx.beginPath();
-            ctx.arc(spX, spY, 1.5, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        } else {
+          ctx.arc(spX, spY, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (p.type === 'crumbling') {
+        this.drawCrumblingPlatform(p, ctx, this.gameTime);
+      } else {
+        ctx.fillStyle = p.broken ? '#444' : '#B7410E';
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        if (!p.broken) {
           ctx.fillStyle = '#D06A2A';
           ctx.fillRect(p.x, p.y, p.w, 3);
           ctx.fillStyle = '#7B2A0A';
@@ -1262,19 +1359,6 @@ class Game {
             ctx.beginPath();
             ctx.arc(p.x + 8 + b * 35, p.y + 8, 2.5, 0, Math.PI * 2);
             ctx.fill();
-          }
-
-          if (p.state === 'activated') {
-            const a = 0.15 + Math.sin(Date.now() * 0.01) * 0.08;
-            ctx.fillStyle = `rgba(255, 200, 50, ${a})`;
-            for (let c = 0; c < 4; c++) {
-              const cx2 = p.x + rand(5, p.w - 5);
-              const cy2 = p.y + rand(2, p.h - 3);
-              ctx.beginPath();
-              ctx.moveTo(cx2, cy2); ctx.lineTo(cx2 + 3, cy2 - 5);
-              ctx.lineTo(cx2 + 6, cy2); ctx.closePath();
-              ctx.fill();
-            }
           }
         }
       }
