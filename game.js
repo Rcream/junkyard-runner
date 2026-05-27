@@ -669,6 +669,7 @@ class LevelGen {
     this.g = game;
     this.chunks = 0;
     this.lastX = -CFG.CHUNK_W;
+    this.lastPlat = null;
   }
 
   update(camX) {
@@ -696,41 +697,41 @@ class LevelGen {
       }
       g.scraps.push({ x: startX + 390, y: 388, w: CFG.SW, h: CFG.SH, col: false, bob: 0 });
       g.scraps.push({ x: startX + 570, y: 438, w: CFG.SW, h: CFG.SH, col: false, bob: 1 });
+      this.lastPlat = p3;
       return;
     }
 
     const maxCount = 2 + (d < 2.5 ? (Math.random() < 0.5 ? 1 : 0) : 0);
     const held = [];
-    const MIN_H_GAP = 30;
-    const MAX_V_GAP = 80;
-    const MIN_V_GAP = 20;
-    const Y_RANGE_LOW = 250;
-    const Y_RANGE_HIGH = 470;
+    const X_GAP_MIN = 40;
+    const X_GAP_MAX = 150;
+    const Y_DELTA_MAX = 80;
+    const Y_DELTA_MIN = 15;
+    const Y_MIN = 250;
+    const Y_MAX = 470;
 
     for (let i = 0; i < maxCount; i++) {
       let placed = false;
       for (let attempt = 0; attempt < 5; attempt++) {
         let px, py, pw;
+        const prevRef = i === 0 ? (this.lastPlat || { x: startX, y: 440, w: 0 }) : held[held.length - 1];
+
         if (i === 0) {
-          px = startX + 40 + rand(0, CFG.CHUNK_W - 120);
-          py = rand(410, 460);
-          pw = 70 + rand(0, 80);
+          px = rand(startX + 30, startX + CFG.CHUNK_W - 100);
         } else {
-          const prev = held[held.length - 1];
-          const xMin = prev.x + prev.w + MIN_H_GAP;
-          const xMax = startX + CFG.CHUNK_W - 50;
-          if (xMin >= xMax) break;
+          const xMin = prevRef.x + prevRef.w + X_GAP_MIN;
+          const xMax = Math.min(prevRef.x + prevRef.w + X_GAP_MAX, startX + CFG.CHUNK_W - 50);
+          if (xMin >= xMax) continue;
           px = rand(xMin, xMax);
-          pw = 60 + rand(0, 85);
-          const yOpts = [];
-          for (let yc = prev.y - MAX_V_GAP; yc <= prev.y + MAX_V_GAP; yc += 5) {
-            if (yc < Y_RANGE_LOW || yc > Y_RANGE_HIGH) continue;
-            if (Math.abs(yc - prev.y) < MIN_V_GAP) continue;
-            yOpts.push(yc);
-          }
-          if (yOpts.length === 0) continue;
-          py = yOpts[Math.floor(rand(0, yOpts.length))];
         }
+        pw = 60 + rand(0, 85);
+
+        py = clamp(prevRef.y + rand(-Y_DELTA_MAX, Y_DELTA_MAX), Y_MIN, Y_MAX);
+        if (Math.abs(py - prevRef.y) < Y_DELTA_MIN) {
+          const dir = py >= prevRef.y ? 1 : -1;
+          py = clamp(prevRef.y + dir * Y_DELTA_MIN, Y_MIN, Y_MAX);
+        }
+        if (px + pw > startX + CFG.CHUNK_W) continue;
         if (pw < 40) continue;
 
         const cand = { x: px, y: py, w: pw, h: CFG.PLAT_H };
@@ -777,6 +778,8 @@ class LevelGen {
       }
     }
 
+    if (g.platforms.length > 0) this.lastPlat = g.platforms[g.platforms.length - 1];
+
     const py = held.length > 0 ? held[held.length - 1].y : 440;
 
     if (this.chunks > 3 && rand(0, 1) < 0.1 + d * 0.04) {
@@ -800,6 +803,7 @@ class LevelGen {
   reset() {
     this.chunks = 0;
     this.lastX = -CFG.CHUNK_W;
+    this.lastPlat = null;
   }
 }
 
